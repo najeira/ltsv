@@ -60,11 +60,16 @@ func (r *Reader) Read() (map[string]string, error) {
 		}
 		r.r.UnreadRune()
 
-		label, err := r.parseLabel()
+		label, end, err := r.parseLabel()
 		if err != nil {
 			return nil, err
 		}
 		if label == "" {
+			if end {
+				if len(record) != 0 {
+					return record, nil
+				}
+			}
 			continue // skip empty label
 		}
 
@@ -81,18 +86,20 @@ func (r *Reader) Read() (map[string]string, error) {
 	panic("unreachable")
 }
 
-func (r *Reader) parseLabel() (string, error) {
+func (r *Reader) parseLabel() (string, bool, error) {
 	r.label.Reset()
 	for {
 		r1, err := r.readRune()
 		if err != nil {
-			return "", err
+			return "", false, err
 		} else if r1 == ':' {
-			return strings.TrimSpace(r.label.String()), nil
-		} else if r1 == '\t' || r1 == '\n' {
-			return "", nil // no label
+			return strings.TrimSpace(r.label.String()), false, nil
+		} else if r1 == '\n' {
+			return "", true, nil
+		} else if r1 == '\t' {
+			return "", false, nil // no label
 		} else if unicode.IsControl(r1) || !unicode.IsPrint(r1) {
-			return "", errors.New(fmt.Sprintf("line %d: invalid rune at label", r.line))
+			return "", false, errors.New(fmt.Sprintf("line %d: invalid rune at label", r.line))
 		}
 		r.label.WriteRune(r1)
 	}

@@ -35,6 +35,15 @@ ha,s.p-un_ct: おはよう `,
 			{"ha,s.p-un_ct": " おはよう "},
 		},
 	},
+	{
+		`label:こんにちは	こんばんは
+label:こんにちは
+こんばんは`,
+		[]map[string]string{
+			{"label": "こんにちは"},
+			{"label": "こんにちは"},
+		},
+	},
 }
 
 func TestReaderRead(t *testing.T) {
@@ -47,7 +56,7 @@ func TestReaderRead(t *testing.T) {
 			}
 			for label, field := range result {
 				if record[label] != field {
-					t.Errorf("wrong field %s at test %d, line %d, label %s, field %s", record[label], n, i, label, field)
+					t.Errorf("wrong field %v at test %d, line %d, label %s, field %s", record[label], n, i, label, field)
 				}
 			}
 			if len(result) != len(record) {
