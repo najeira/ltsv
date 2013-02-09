@@ -7,8 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"unicode"
 	"strings"
+	"unicode"
 )
 
 // A Reader reads records from a LTSV-encoded file.
@@ -59,7 +59,7 @@ func (r *Reader) Read() (map[string]string, error) {
 			continue
 		}
 		r.r.UnreadRune()
-		
+
 		label, err := r.parseLabel()
 		if err != nil {
 			return nil, err
@@ -67,12 +67,12 @@ func (r *Reader) Read() (map[string]string, error) {
 		if label == "" {
 			continue // skip empty label
 		}
-		
+
 		field, end, err := r.parseField()
 		if err != nil {
 			return nil, err
 		}
-		
+
 		record[label] = field
 		if end {
 			return record, nil
