@@ -44,6 +44,18 @@ label2:こんばんは
 			{"label2": "こんばんは"},
 		},
 	},
+	{
+		`
+hoge:foo	bar:baz
+perl:5.17.8	ruby:2.0	python:2.6
+sushi:寿司	tennpura:天ぷら	ramen:ラーメン	gyoza:餃子
+		`,
+		[]map[string]string{
+			{"hoge": "foo", "bar": "baz"},
+			{"perl": "5.17.8", "ruby": "2.0", "python": "2.6"},
+			{"sushi": "寿司", "tennpura": "天ぷら", "ramen": "ラーメン", "gyoza": "餃子"},
+		},
+	},
 }
 
 func TestReaderRead(t *testing.T) {
@@ -126,6 +138,16 @@ func TestWriterWrite(t *testing.T) {
 					}
 				}
 			}
+		}
+	}
+}
+
+func BenchmarkReaderRead(b *testing.B) {
+	for i := 0; i < 10000; i++ {
+		reader := NewReader(bytes.NewBufferString(readerTests[3].value))
+		_, e := reader.Read()
+		if e != nil {
+			break
 		}
 	}
 }
