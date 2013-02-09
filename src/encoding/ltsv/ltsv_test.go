@@ -2,16 +2,16 @@ package ltsv
 
 import (
 	"bytes"
-	"testing"
 	"io"
+	"testing"
 )
 
 type readerTest struct {
-	value  string
+	value   string
 	records []map[string]string
 }
 
-var readerTests = []readerTest {
+var readerTests = []readerTest{
 	{
 		`host:127.0.0.1	ident:-	user:frank	time:[10/Oct/2000:13:55:36 -0700]	req:GET /apache_pb.gif
 
@@ -37,7 +37,7 @@ ha,s.p-un_ct: おはよう `,
 	},
 }
 
-func TestReader(t *testing.T) {
+func TestReaderRead(t *testing.T) {
 	for n, test := range readerTests {
 		reader := NewReader(bytes.NewBufferString(test.value))
 		for i, result := range test.records {
@@ -47,19 +47,51 @@ func TestReader(t *testing.T) {
 			}
 			for label, field := range result {
 				if record[label] != field {
-					t.Errorf("wrong field %s: test %d, line %d, label %s, field %s", record[label], n, i, label, field)
+					t.Errorf("wrong field %s at test %d, line %d, label %s, field %s", record[label], n, i, label, field)
 				}
 			}
 			if len(result) != len(record) {
-				t.Errorf("wrong size %d, %v :test %d, line %d", len(record), record, n, i)
+				t.Errorf("wrong size of record %d at test %d, line %d", len(record), n, i)
 			}
 		}
 		_, err := reader.Read()
-		if err != io.EOF {
-			t.Errorf("expected EOF: %v", err)
+		if err == nil || err != io.EOF {
+			t.Errorf("expected EOF got %v at test %d", err, n)
 		}
 	}
 }
 
-func TestWriter(t *testing.T) {
+func TestWriterWrite(t *testing.T) {
+	var buf bytes.Buffer
+	for n, test := range readerTests {
+		buf.Reset()
+		writer := NewWriter(&buf)
+		for i, record := range test.records {
+			err := writer.Write(record)
+			if err != nil {
+				t.Errorf("error %v at test %d, line %d", err, n, i)
+			}
+		}
+		writer.Flush()
+
+		reader := NewReader(&buf)
+		records, err := reader.ReadAll()
+		if err != nil {
+			t.Errorf("error %v at test %d", err, n)
+			continue
+		}
+		if len(records) != len(test.records) {
+			t.Errorf("wrong size of records %d at test %d", len(records), n)
+		} else {
+			for i := 0; i < len(test.records); i++ {
+				record := records[i]
+				result := test.records[i]
+				for label, field := range result {
+					if field != record[label] {
+						t.Errorf("wrong field %s at test %d, line %d, label %s, field %s", record[label], n, i, label, field)
+					}
+				}
+			}
+		}
+	}
 }
