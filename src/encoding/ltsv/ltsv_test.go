@@ -26,6 +26,7 @@ HTTP/1.0	status:200	size:2326	referer:http://www.example.com/start.html	ua:Mozil
 		` trimspace :こんにちは
 		 trim space :こんばんは
 日本語:ラベル
+nolabelnofield
 ha,s.p-un_ct: おはよう `,
 		[]map[string]string{
 			{"trimspace": "こんにちは"},

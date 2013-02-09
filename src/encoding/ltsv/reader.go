@@ -44,13 +44,9 @@ func (r *Reader) Read() (map[string]string, error) {
 	r.line++
 	record := make(map[string]string)
 	for {
-		r1, err := r.readRune()
-		if r1 == '\n' {
-			continue // skip empty line
-		}
-		
 		// If we are support comments and it is the comment character
 		// then skip to the end of line.
+		r1, err := r.readRune()
 		if r.Comment != 0 && r1 == r.Comment {
 			for {
 				r1, err := r.readRune()
@@ -93,7 +89,7 @@ func (r *Reader) parseLabel() (string, error) {
 			return "", err
 		} else if r1 == ':' {
 			return strings.TrimSpace(r.label.String()), nil
-		} else if r1 == '\t' {
+		} else if r1 == '\t' || r1 == '\n' {
 			return "", nil // no label
 		} else if unicode.IsControl(r1) || !unicode.IsPrint(r1) {
 			return "", errors.New(fmt.Sprintf("line %d: invalid rune at label", r.line))
