@@ -37,11 +37,11 @@ ha,s.p-un_ct: おはよう `,
 	},
 	{
 		`label:こんにちは	こんばんは
-label:こんにちは
-こんばんは`,
+label2:こんばんは
+こんにちは`,
 		[]map[string]string{
 			{"label": "こんにちは"},
-			{"label": "こんにちは"},
+			{"label2": "こんばんは"},
 		},
 	},
 }
@@ -66,6 +66,31 @@ func TestReaderRead(t *testing.T) {
 		_, err := reader.Read()
 		if err == nil || err != io.EOF {
 			t.Errorf("expected EOF got %v at test %d", err, n)
+		}
+	}
+}
+
+func TestReaderReadAll(t *testing.T) {
+	for n, test := range readerTests {
+		reader := NewReader(bytes.NewBufferString(test.value))
+		records, err := reader.ReadAll()
+		if err != nil {
+			t.Errorf("error %v at test %d", err, n)
+		}
+		if len(test.records) != len(records) {
+			t.Errorf("wrong size of records %d at test %d", len(records), n)
+		} else {
+			for i, result := range test.records {
+				record := records[i]
+				for label, field := range result {
+					if record[label] != field {
+						t.Errorf("wrong field %v at test %d, line %d, label %s, field %s", record[label], n, i, label, field)
+					}
+				}
+				if len(result) != len(record) {
+					t.Errorf("wrong size of record %d at test %d, line %d", len(record), n, i)
+				}
+			}
 		}
 	}
 }
