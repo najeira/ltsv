@@ -151,3 +151,17 @@ func BenchmarkReaderRead(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkWriterWrite(b *testing.B) {
+	var buf bytes.Buffer
+	for i := 0; i < 10000; i++ {
+		for _, test := range readerTests {
+			buf.Reset()
+			writer := NewWriter(&buf)
+			for _, record := range test.records {
+				writer.Write(record)
+			}
+			writer.Flush()
+		}
+	}
+}
