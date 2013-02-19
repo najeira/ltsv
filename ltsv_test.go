@@ -142,6 +142,35 @@ func TestWriterWrite(t *testing.T) {
 	}
 }
 
+func TestWriterWriteAll(t *testing.T) {
+	var buf bytes.Buffer
+	for n, test := range readerTests {
+		buf.Reset()
+		writer := NewWriter(&buf)
+		writer.WriteAll(test.records)
+
+		reader := NewReader(&buf)
+		records, err := reader.ReadAll()
+		if err != nil {
+			t.Errorf("error %v at test %d", err, n)
+			continue
+		}
+		if len(records) != len(test.records) {
+			t.Errorf("wrong size of records %d at test %d", len(records), n)
+		} else {
+			for i := 0; i < len(test.records); i++ {
+				record := records[i]
+				result := test.records[i]
+				for label, field := range result {
+					if field != record[label] {
+						t.Errorf("wrong field %s at test %d, line %d, label %s, field %s", record[label], n, i, label, field)
+					}
+				}
+			}
+		}
+	}
+}
+
 func BenchmarkReaderRead(b *testing.B) {
 	for i := 0; i < 10000; i++ {
 		reader := NewReader(bytes.NewBufferString(readerTests[3].value))
