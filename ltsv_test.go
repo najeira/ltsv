@@ -58,6 +58,38 @@ sushi:寿司	tennpura:天ぷら	ramen:ラーメン	gyoza:餃子
 	},
 }
 
+type structRecordA struct {
+	host string
+	ident string
+	user string
+	time string
+	req string
+}
+
+type structRecordB struct {
+	status int
+	size int
+	referer string
+	ua string
+}
+
+type structTest struct {
+	value   string
+	records []interface{}
+}
+
+var structTests = []structTest{
+	{
+		`host:127.0.0.1	ident:-	user:frank	time:[10/Oct/2000:13:55:36 -0700]	req:GET /apache_pb.gif
+status:200	size:2326	referer:http://www.example.com/start.html	ua:Mozilla/4.08 [en] (Win98; I ;Nav)
+`,
+		[]interface{}{
+			&structRecordA{host: "127.0.0.1", ident: "-", user: "frank", time: "[10/Oct/2000:13:55:36 -0700]", req: "GET /apache_pb.gif"},
+			&structRecordB{status: 200, size: 2326, referer: "http://www.example.com/start.html", ua: "Mozilla/4.08 [en] (Win98; I ;Nav)"},
+		},
+	},
+}
+
 func TestReaderRead(t *testing.T) {
 	for n, test := range readerTests {
 		reader := NewReader(bytes.NewBufferString(test.value))
@@ -138,6 +170,24 @@ func TestWriterWrite(t *testing.T) {
 					}
 				}
 			}
+		}
+	}
+}
+
+func TestWriterWriteStruct(t *testing.T) {
+	var buf bytes.Buffer
+	for n, test := range structTests {
+		buf.Reset()
+		writer := NewWriter(&buf)
+		for i, record := range test.records {
+			err := writer.Write(record)
+			if err != nil {
+				t.Errorf("error %v at test %d, line %d", err, n, i)
+			}
+		}
+		writer.Flush()
+		if buf.String() != test.value {
+			t.Errorf("expect:\n%s\ngot:\n%v\n", test.value, buf.String())
 		}
 	}
 }
