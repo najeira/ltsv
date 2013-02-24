@@ -9,7 +9,6 @@ import (
 	"io"
 	"reflect"
 	"strings"
-	"sync"
 	"unicode"
 )
 
@@ -33,11 +32,6 @@ type Reader struct {
 }
 
 type structLabelIndexMap map[string]int
-
-var (
-	structLabelIndexCacheLock sync.RWMutex
-	structLabelIndexCache     = make(map[reflect.Type]structLabelIndexMap)
-)
 
 // NewReader returns a new Reader that reads from r.
 func NewReader(r io.Reader) *Reader {
@@ -237,36 +231,10 @@ func (r *Reader) ReadAll() ([]map[string]string, error) {
 }
 
 func structLabelIndex(v reflect.Value) structLabelIndexMap {
-	t := v.Type()
-	structLabelIndexCacheLock.RLock()
-	fs, ok := structLabelIndexCache[t]
-	structLabelIndexCacheLock.RUnlock()
-	if ok {
-		return fs
+	sil := structIndexLabel(v)
+	sli := make(structLabelIndexMap)
+	for i, l := range sil {
+		sli[l] = i
 	}
-	structLabelIndexCacheLock.Lock()
-	defer structLabelIndexCacheLock.Unlock()
-	fs, ok = structLabelIndexCache[t]
-	if ok {
-		return fs
-	}
-	labels := make(structLabelIndexMap)
-	n := t.NumField()
-	for i := 0; i < n; i++ {
-		f := t.Field(i)
-		if f.Anonymous {
-			continue
-		}
-		label := f.Name
-		tv := f.Tag.Get("ltsv")
-		if tv != "" {
-			if tv == "-" {
-				continue
-			}
-			label, _ = parseTag(tv)
-		}
-		labels[label] = i
-	}
-	structLabelIndexCache[t] = labels
-	return labels
+	return sli
 }

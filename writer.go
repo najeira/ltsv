@@ -35,8 +35,8 @@ var (
 	ErrUnsupportedType        = errors.New("unsupported type")
 	ErrLabelInvalid           = errors.New("label is invalid")
 	ErrFieldInvalid           = errors.New("firld is invalid")
-	structIndexLabelCacheLock sync.RWMutex
 	structIndexLabelCache     = make(map[reflect.Type]structIndexLabelMap)
+	structIndexLabelCacheLock sync.RWMutex
 )
 
 // NewWriter returns a new Writer that writes to w.
