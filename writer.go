@@ -27,16 +27,16 @@ type Writer struct {
 	w         *bufio.Writer
 }
 
-type structLabelMap map[int]string
+type structIndexLabelMap map[int]string
 
 type formatter func(reflect.Value) (string, error)
 
 var (
-	ErrUnsupportedType   = errors.New("unsupported type")
-	ErrLabelInvalid      = errors.New("label is invalid")
-	ErrFieldInvalid      = errors.New("firld is invalid")
-	structLabelCacheLock sync.RWMutex
-	structLabelCache     = make(map[reflect.Type]structLabelMap)
+	ErrUnsupportedType        = errors.New("unsupported type")
+	ErrLabelInvalid           = errors.New("label is invalid")
+	ErrFieldInvalid           = errors.New("firld is invalid")
+	structIndexLabelCacheLock sync.RWMutex
+	structIndexLabelCache     = make(map[reflect.Type]structIndexLabelMap)
 )
 
 // NewWriter returns a new Writer that writes to w.
@@ -166,7 +166,7 @@ func (w *Writer) writeLineEnd() error {
 }
 
 func (w *Writer) writeStruct(v reflect.Value) error {
-	labels := w.structLabel(v)
+	labels := structIndexLabel(v)
 	n := v.NumField()
 	cnt := 0
 	for i := 0; i < n; i++ {
@@ -275,21 +275,21 @@ func reflectValue(v reflect.Value) (string, error) {
 	return "", ErrUnsupportedType
 }
 
-func (w *Writer) structLabel(v reflect.Value) structLabelMap {
+func structIndexLabel(v reflect.Value) structIndexLabelMap {
 	t := v.Type()
-	structLabelCacheLock.RLock()
-	fs, ok := structLabelCache[t]
-	structLabelCacheLock.RUnlock()
+	structIndexLabelCacheLock.RLock()
+	fs, ok := structIndexLabelCache[t]
+	structIndexLabelCacheLock.RUnlock()
 	if ok {
 		return fs
 	}
-	structLabelCacheLock.Lock()
-	defer structLabelCacheLock.Unlock()
-	fs, ok = structLabelCache[t]
+	structIndexLabelCacheLock.Lock()
+	defer structIndexLabelCacheLock.Unlock()
+	fs, ok = structIndexLabelCache[t]
 	if ok {
 		return fs
 	}
-	labels := make(structLabelMap)
+	labels := make(structIndexLabelMap)
 	n := t.NumField()
 	for i := 0; i < n; i++ {
 		f := t.Field(i)
@@ -306,7 +306,7 @@ func (w *Writer) structLabel(v reflect.Value) structLabelMap {
 		}
 		labels[i] = label
 	}
-	structLabelCache[t] = labels
+	structIndexLabelCache[t] = labels
 	return labels
 }
 

@@ -2,6 +2,7 @@ package ltsv
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 )
@@ -59,18 +60,18 @@ sushi:寿司	tennpura:天ぷら	ramen:ラーメン	gyoza:餃子
 }
 
 type structRecordA struct {
-	host string
+	host  string
 	ident string
-	user string
-	time string
-	req string
+	user  string
+	time  string
+	req   string
 }
 
 type structRecordB struct {
-	status int
-	size int
+	status  int
+	size    int
 	referer string
-	ua string
+	ua      string
 }
 
 type structTest struct {
@@ -86,6 +87,34 @@ status:200	size:2326	referer:http://www.example.com/start.html	ua:Mozilla/4.08 [
 		[]interface{}{
 			&structRecordA{host: "127.0.0.1", ident: "-", user: "frank", time: "[10/Oct/2000:13:55:36 -0700]", req: "GET /apache_pb.gif"},
 			&structRecordB{status: 200, size: 2326, referer: "http://www.example.com/start.html", ua: "Mozilla/4.08 [en] (Win98; I ;Nav)"},
+		},
+	},
+}
+
+type structRecordC struct {
+	Host  string `ltsv:"host"`
+	Ident string `ltsv:"ident"`
+	User  string `ltsv:"user"`
+	Time  string `ltsv:"time"`
+	Req   string `ltsv:"req"`
+}
+
+func (s *structRecordC) String() string {
+	return fmt.Sprintf("host:%v	ident:%v	user:%v	time:%v	req:%v",
+		s.Host, s.Ident, s.User, s.Time, s.Req)
+}
+
+type structLoadTest struct {
+	value   string
+	records []structRecordC
+}
+
+var structLoadTests = []structLoadTest{
+	{
+		`host:127.0.0.1	ident:-	user:frank	time:[10/Oct/2000:13:55:36 -0700]	req:GET /apache_pb.gif
+`,
+		[]structRecordC{
+			structRecordC{Host: "127.0.0.1", Ident: "-", User: "frank", Time: "[10/Oct/2000:13:55:36 -0700]", Req: "GET /apache_pb.gif"},
 		},
 	},
 }
@@ -108,6 +137,27 @@ func TestReaderRead(t *testing.T) {
 			}
 		}
 		_, err := reader.Read()
+		if err == nil || err != io.EOF {
+			t.Errorf("expected EOF got %v at test %d", err, n)
+		}
+	}
+}
+
+func TestReaderLoad(t *testing.T) {
+	for n, test := range structLoadTests {
+		reader := NewReader(bytes.NewBufferString(test.value))
+		for i, result := range test.records {
+			st := structRecordC{}
+			err := reader.Load(&st)
+			if err != nil {
+				t.Errorf("error %v at test %d, line %d", err, n, i)
+			}
+			if st.String() != result.String() {
+				t.Errorf("got: %s", st.String())
+			}
+		}
+		st := structRecordC{}
+		err := reader.Load(&st)
 		if err == nil || err != io.EOF {
 			t.Errorf("expected EOF got %v at test %d", err, n)
 		}

@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -30,6 +32,13 @@ type Reader struct {
 	field     bytes.Buffer
 }
 
+type structLabelIndexMap map[string]int
+
+var (
+	structLabelIndexCacheLock sync.RWMutex
+	structLabelIndexCache     = make(map[reflect.Type]structLabelIndexMap)
+)
+
 // NewReader returns a new Reader that reads from r.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
@@ -38,52 +47,125 @@ func NewReader(r io.Reader) *Reader {
 	}
 }
 
+type recorder interface {
+	record(label, field string) error
+	len() int
+}
+
+type mapRecorder struct {
+	records map[string]string
+}
+
+func (r *mapRecorder) record(label, field string) error {
+	r.records[label] = field
+	return nil
+}
+
+func (r *mapRecorder) len() int {
+	return len(r.records)
+}
+
+type structRecorder struct {
+	count  int
+	value  reflect.Value
+	labels structLabelIndexMap
+}
+
+func (r *structRecorder) record(label, field string) error {
+	idx, ok := r.labels[label]
+	if !ok {
+		return nil
+	}
+	r.value.Field(idx).SetString(field)
+	r.count++
+	return nil
+}
+
+func (r *structRecorder) len() int {
+	return r.count
+}
+
 // Read reads one record from r.  The record is a slice of strings with each
 // string representing one field.
 func (r *Reader) Read() (map[string]string, error) {
+	rec := mapRecorder{records: make(map[string]string)}
+	err := r.readRecord(&rec)
+	if err != nil {
+		return nil, err
+	}
+	return rec.records, nil
+}
+
+func (r *Reader) readRecord(rec recorder) error {
 	r.line++
-	record := make(map[string]string)
 	for {
-		// If we are support comments and it is the comment character
-		// then skip to the end of line.
-		r1, err := r.readRune()
-		if r.Comment != 0 && r1 == r.Comment {
-			for {
-				r1, err := r.readRune()
-				if err != nil {
-					return nil, err
-				} else if r1 == '\n' {
-					break
-				}
-			}
+		cm, err := r.readComment()
+		if err != nil {
+			return err
+		} else if cm {
 			continue
 		}
-		r.r.UnreadRune()
 
 		label, end, err := r.parseLabel()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if label == "" {
 			if end {
-				if len(record) != 0 {
-					return record, nil
+				if rec.len() >= 1 {
+					return nil
 				}
 			}
-			continue // skip empty label
+			continue // skip a empty line
 		}
 
 		field, end, err := r.parseField()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		record[label] = field
+		err = rec.record(label, field)
+		if err != nil {
+			return err
+		}
 		if end {
-			return record, nil
+			return nil
 		}
 	}
 	panic("unreachable")
+}
+
+func (r *Reader) readComment() (bool, error) {
+	// If we are support comments and it is the comment character
+	// then skip to the end of line.
+	r1, err := r.readRune()
+	if r.Comment != 0 && r1 == r.Comment {
+		for {
+			r1, err = r.readRune()
+			if err != nil {
+				return false, err
+			} else if r1 == '\n' {
+				return true, nil
+			}
+		}
+	}
+	r.r.UnreadRune()
+	return false, nil
+}
+
+func (r *Reader) Load(record interface{}) error {
+	v := reflect.ValueOf(record)
+	k := v.Kind()
+	if (k != reflect.Ptr && k != reflect.Interface) || v.IsNil() {
+		return ErrUnsupportedType
+	}
+	e := v.Elem()
+	rec := structRecorder{value: e, labels: structLabelIndex(e)}
+	err := r.readRecord(&rec)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *Reader) parseLabel() (string, bool, error) {
@@ -152,4 +234,39 @@ func (r *Reader) ReadAll() ([]map[string]string, error) {
 		records = append(records, record)
 	}
 	panic("unreachable")
+}
+
+func structLabelIndex(v reflect.Value) structLabelIndexMap {
+	t := v.Type()
+	structLabelIndexCacheLock.RLock()
+	fs, ok := structLabelIndexCache[t]
+	structLabelIndexCacheLock.RUnlock()
+	if ok {
+		return fs
+	}
+	structLabelIndexCacheLock.Lock()
+	defer structLabelIndexCacheLock.Unlock()
+	fs, ok = structLabelIndexCache[t]
+	if ok {
+		return fs
+	}
+	labels := make(structLabelIndexMap)
+	n := t.NumField()
+	for i := 0; i < n; i++ {
+		f := t.Field(i)
+		if f.Anonymous {
+			continue
+		}
+		label := f.Name
+		tv := f.Tag.Get("ltsv")
+		if tv != "" {
+			if tv == "-" {
+				continue
+			}
+			label, _ = parseTag(tv)
+		}
+		labels[label] = i
+	}
+	structLabelIndexCache[t] = labels
+	return labels
 }
