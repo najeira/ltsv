@@ -221,6 +221,18 @@ func TestWriterWriteAll(t *testing.T) {
 	}
 }
 
+func TestWriterWriteAllStruct(t *testing.T) {
+	var buf bytes.Buffer
+	for _, test := range structTests {
+		buf.Reset()
+		writer := NewWriter(&buf)
+		writer.WriteAll(test.records)
+		if buf.String() != test.value {
+			t.Errorf("expect:\n%s\ngot:\n%v\n", test.value, buf.String())
+		}
+	}
+}
+
 func BenchmarkReaderRead(b *testing.B) {
 	for i := 0; i < 10000; i++ {
 		reader := NewReader(bytes.NewBufferString(readerTests[3].value))

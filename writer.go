@@ -101,10 +101,38 @@ func (w *Writer) Flush() {
 }
 
 // WriteAll writes multiple LTSV records to w using Write and then calls Flush.
-func (w *Writer) WriteAll(records []map[string]string) error {
+func (w *Writer) WriteAll(records interface{}) error {
+	m, ok := records.([]map[string]string)
+	if ok {
+		return w.writeMapStringAll(m)
+	}
+	return w.writeAnyAll(reflect.ValueOf(records))
+}
+
+func (w *Writer) writeMapStringAll(records []map[string]string) error {
 	var err error
 	for _, record := range records {
-		if err = w.Write(record); err != nil {
+		if err = w.writeMapString(record); err != nil {
+			break
+		}
+	}
+	w.Flush()
+	return err
+}
+
+func (w *Writer) writeAnyAll(v reflect.Value) error {
+	k := v.Kind()
+	if k == reflect.Slice {
+		if v.IsNil() {
+			return nil
+		}
+	} else if k != reflect.Array {
+		return ErrUnsupportedType
+	}
+	var err error
+	n := v.Len()
+	for i := 0; i < n; i++ {
+		if err = w.writeAny(v.Index(i)); err != nil {
 			break
 		}
 	}
