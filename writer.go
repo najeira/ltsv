@@ -34,7 +34,7 @@ type formatter func(reflect.Value) (string, error)
 var (
 	ErrUnsupportedType        = errors.New("unsupported type")
 	ErrLabelInvalid           = errors.New("label is invalid")
-	ErrFieldInvalid           = errors.New("firld is invalid")
+	ErrFieldInvalid           = errors.New("field is invalid")
 	structIndexLabelCache     = make(map[reflect.Type]structIndexLabelMap)
 	structIndexLabelCacheLock sync.RWMutex
 )
