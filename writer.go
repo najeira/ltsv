@@ -338,9 +338,6 @@ func (w *Writer) writeLabel(s string) error {
 }
 
 func (w *Writer) writeField(s string) error {
-	if s == "" {
-		return ErrFieldInvalid
-	}
 	var err error
 	for _, c := range s {
 		if c == w.Delimiter || c == '\n' {

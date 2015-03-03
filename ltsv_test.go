@@ -57,6 +57,16 @@ sushi:寿司	tennpura:天ぷら	ramen:ラーメン	gyoza:餃子
 			{"sushi": "寿司", "tennpura": "天ぷら", "ramen": "ラーメン", "gyoza": "餃子"},
 		},
 	},
+	{
+		`
+hoge:	bar:
+perl:	ruby:
+    `,
+		[]map[string]string{
+			{"hoge": "", "bar": ""},
+			{"perl": "", "ruby": ""},
+		},
+	},
 }
 
 type structRecordA struct {
